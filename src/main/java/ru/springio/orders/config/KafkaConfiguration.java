@@ -1,10 +1,7 @@
 package ru.springio.orders.config;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -17,7 +14,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
@@ -87,11 +83,9 @@ public class KafkaConfiguration {
         ConcurrentKafkaListenerContainerFactory<String, OrderDeliveryInfoDto> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(orderDeliveryInfoDtoConsumerFactory);
         factory.setBatchListener(false);
-        DefaultErrorHandler errorHandler =
-            new DefaultErrorHandler((record, exception) -> {
-                System.out.println(record);
-                // recover after 3 failures, with no back off - e.g. send to a dead-letter topic
-            }, new FixedBackOff(0L, 2L));
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler((record, exception) -> {
+            System.out.println(record);
+        }, new FixedBackOff(0L, 2L));
 
         factory.setCommonErrorHandler(errorHandler);
         return factory;

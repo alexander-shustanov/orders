@@ -3,11 +3,9 @@ package ru.springio.orders.rest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Window;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.springio.orders.domain.Order;
 import ru.springio.orders.rest.dto.*;
 
 import org.springframework.web.bind.annotation.RequestMapping;
