@@ -14,16 +14,5 @@ public class OrderDto {
     Long id;
     Long customerId;
     OrderStatus orderStatus;
-    List<OrderLineDto> orderLines;
     BigDecimal sum;
-
-    /**
-     * DTO for {@link ru.springio.orders.domain.OrderLine}
-     */
-    @Value
-    public static class OrderLineDto {
-        Long id;
-        Long productId;
-        Long amount;
-    }
 }

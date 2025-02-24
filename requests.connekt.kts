@@ -26,25 +26,31 @@ val firstCity by GET("$host/cities") then {
     jsonPath().readLong("$[0].id")
 }
 
+
+// CREATE ORDER
 POST("$host/orders") {
     header("Content-Type", "application/json")
     body(
         """
         {
-            "customerId" : ${customerIds[0]},
+            "customerId" : ${customerIds[1]},
             "cityId": $firstCity
         }
     """.trimIndent()
     )
 }
 
-val activeOrderId by GET("$host/orders/active?customerId=${customerIds[0]}") then {
+val activeOrderId by GET("$host/orders/active?customerId=${customerIds[1]}") then {
     Assertions.assertThat(code).isEqualTo(200)
 
     jsonPath().readLong("id")
 }
 
 DELETE("$host/orders/{orderId}") {
+    pathParams("orderId", activeOrderId)
+}
+
+GET("$host/orders/{orderId}") {
     pathParams("orderId", activeOrderId)
 }
 
@@ -55,7 +61,7 @@ POST("$host/orders/{orderId}/lines") {
         """
         {
             "productId": ${productIds[0]},
-            "amount": 0
+            "amount": 6
         }
         """.trimIndent()
     )
@@ -79,7 +85,7 @@ POST("$host/inventory/supply") {
     )
 }
 
-GET("http://localhost:8080/inventory/for-product/{productId}") {
+GET("$host/inventory/for-product/{productId}") {
     pathParams("productId", productIds[0])
 }
 
@@ -108,3 +114,7 @@ flow("Do supply") {
         }
     }
 }
+
+GET("$host/orders?customerId=${customerIds[1]}") {
+}
+

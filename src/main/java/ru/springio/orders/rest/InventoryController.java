@@ -29,8 +29,8 @@ public class InventoryController {
     @PostMapping("/supply")
     public InventoryDto supply(@RequestBody SupplyDto supplyDto) {
         return inventoryService.supply(
-                supplyDto.productId(),
-                supplyDto.cityId(),
-                supplyDto.amount());
+            supplyDto.productId(),
+            supplyDto.cityId(),
+            supplyDto.amount());
     }
 }

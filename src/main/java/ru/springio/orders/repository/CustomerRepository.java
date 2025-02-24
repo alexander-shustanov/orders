@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import ru.springio.orders.domain.Customer;
-import java.util.List;
 
 
 @Repository

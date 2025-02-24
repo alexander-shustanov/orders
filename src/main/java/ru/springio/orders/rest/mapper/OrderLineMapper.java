@@ -12,4 +12,6 @@ public interface OrderLineMapper {
     @Mapping(source = "product.id", target = "productId")
     @Mapping(source = "order.id", target = "orderId")
     OrderLineDto toOrderLineDto(OrderLine orderLine);
+
+    OrderLine toEntity(OrderLineDto orderLineDto);
 }

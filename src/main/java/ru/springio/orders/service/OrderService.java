@@ -1,6 +1,13 @@
-package ru.springio.orders.rest;
+package ru.springio.orders.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Window;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -12,13 +19,15 @@ import ru.springio.orders.repository.CustomerRepository;
 import ru.springio.orders.repository.OrderLineRepository;
 import ru.springio.orders.repository.OrderRepository;
 import ru.springio.orders.repository.ProductRepository;
+import ru.springio.orders.rest.dto.OrderWithLinesDto;
 import ru.springio.orders.rest.dto.CreateOrderDto;
 import ru.springio.orders.rest.dto.OrderDto;
 import ru.springio.orders.rest.dto.OrderLineAmount;
 import ru.springio.orders.rest.dto.OrderLineDto;
+import ru.springio.orders.rest.filter.OrderFilter;
 import ru.springio.orders.rest.mapper.OrderLineMapper;
 import ru.springio.orders.rest.mapper.OrderMapper;
-import ru.springio.orders.service.InventoryService;
+import ru.springio.orders.service.dto.OrderDeliveryInfoDto;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -45,20 +54,20 @@ public class OrderService {
 
     public OrderDto create(CreateOrderDto orderDto) {
         Optional<Order> existing = orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(
-                customerRepository.getReferenceById(orderDto.getCustomerId()), OrderStatus.NEW);
+            customerRepository.getReferenceById(orderDto.getCustomerId()), OrderStatus.NEW);
         if (existing.isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         return orderMapper.toOrderDto(
-                orderRepository.save(orderMapper.toEntity(orderDto)));
+            orderRepository.save(orderMapper.toEntity(orderDto)));
     }
 
-    public Optional<OrderDto> getActiveOrder(Long customerId) {
+    public Optional<OrderWithLinesDto> getActiveOrder(Long customerId) {
         Customer customer = customerRepository.getReferenceById(customerId);
 
         return orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(customer, OrderStatus.NEW)
-                .map(orderMapper::toOrderDto);
+            .map(orderMapper::toOrderWithLinesDto);
     }
 
     @Transactional
@@ -66,15 +75,15 @@ public class OrderService {
         Order order = getOrderOrThrow(orderId);
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         if (order.getOrderStatus() != OrderStatus.NEW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
         Optional<OrderLine> existing = order.getOrderLines().stream()
-                .filter(orderLine -> orderLine.getProduct().getId().equals(productId))
-                .findFirst();
+            .filter(orderLine -> orderLine.getProduct().getId().equals(productId))
+            .findFirst();
 
         if (existing.isPresent()) {
             OrderLine orderLine = existing.get();
@@ -112,20 +121,21 @@ public class OrderService {
         inventoryService.reserve(product, order.getCity(), amount);
 
         OrderLine orderLine = order.getOrderLines().stream()
-                .filter(line -> line.getProduct().getId().equals(productId))
-                .findFirst()
-                .orElseGet(() -> {
-                    OrderLine line = new OrderLine();
-                    line.setOrder(order);
-                    line.setProduct(product);
-                    line.setAmount(0L);
-                    return line;
-                });
+            .filter(line -> line.getProduct().getId().equals(productId))
+            .findFirst()
+            .orElseGet(() -> {
+                OrderLine line = new OrderLine();
+                line.setOrder(order);
+                line.setProduct(product);
+                line.setAmount(0L);
+                order.getOrderLines().add(line);
+                return line;
+            });
 
         orderLine.setAmount(orderLine.getAmount() + amount);
         orderLineRepository.saveAndFlush(orderLine);
 
-        recalculateOrderSum(getOrderOrThrow(orderId));
+        recalculateOrderSum(order);
 
         orderRepository.saveAndFlush(order);
 
@@ -134,7 +144,7 @@ public class OrderService {
 
     public OrderLineDto changeProductsAmount(Long orderLineId, OrderLineAmount amount) {
         OrderLine orderLine = orderLineRepository.findById(orderLineId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         Order order = orderLine.getOrder();
         if (order.getOrderStatus() != OrderStatus.NEW) {
@@ -156,11 +166,11 @@ public class OrderService {
     @Transactional
     public void deleteProduct(Long orderLineId) {
         orderLineRepository.findById(orderLineId)
-                .ifPresent(line -> {
-                    inventoryService.cancelReserve(line.getProduct(), null, line.getAmount());
+            .ifPresent(line -> {
+                inventoryService.cancelReserve(line.getProduct(), null, line.getAmount());
 
-                    recalculateOrderSum(line.getOrder());
-                });
+                recalculateOrderSum(line.getOrder());
+            });
 
         orderLineRepository.deleteById(orderLineId);
     }
@@ -191,32 +201,49 @@ public class OrderService {
         order.getOrderLines().forEach(line -> {
             inventoryService.cancelReserve(line.getProduct(), order.getCity(), line.getAmount());
         });
-        orderRepository.delete(order);
+
+        order.setOrderStatus(OrderStatus.CANCELED);
     }
 
-    @KafkaListener(topics = "orderDelivery", containerFactory = "longListenerFactory")
+    @KafkaListener(topics = "orderDelivery", containerFactory = "orderDeliveryInfoDtoListenerFactory")
     @Transactional
-    public void consumeDeliveredOrderId(Long orderId) {
-        Order order = getOrderOrThrow(orderId);
-        order.setOrderStatus(OrderStatus.DELIVERED);
+    public void consumeOrderDeliveryInfoDto(OrderDeliveryInfoDto orderDeliveryInfoDto) {
+        Order order = getOrderOrThrow(orderDeliveryInfoDto.id());
+        if (orderDeliveryInfoDto.delivered()) {
+            order.setOrderStatus(OrderStatus.DELIVERED);
 
-        order
+            order
                 .getOrderLines()
                 .forEach(line -> {
-                    inventoryService.productShipped(line.getProduct(), null, line.getAmount());
+                    inventoryService.productShipped(line.getProduct(), order.getCity(), line.getAmount());
                 });
+        } else {
+            order.setOrderStatus(OrderStatus.CANCELED);
+
+            order
+                .getOrderLines()
+                .forEach(line -> {
+                    inventoryService.cancelReserve(line.getProduct(), order.getCity(), line.getAmount());
+                });
+        }
     }
 
     private Order getOrderOrThrow(Long orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private void recalculateOrderSum(Order order) {
         order.setSum(
-                order.getOrderLines().stream()
-                        .map(orderLine -> orderLine.getProduct().getPrice()
-                                .multiply(BigDecimal.valueOf(orderLine.getAmount())))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+            order.getOrderLines().stream()
+                .map(orderLine -> orderLine.getProduct().getPrice()
+                    .multiply(BigDecimal.valueOf(orderLine.getAmount())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
+    public Page<OrderWithLinesDto> getAll(OrderFilter filter, Pageable pageable) {
+        Specification<Order> spec = filter.toSpecification();
+        Page<Order> orders = orderRepository.findAll(spec, pageable);
+        return orders.map(orderMapper::toOrderWithLinesDto);
     }
 }

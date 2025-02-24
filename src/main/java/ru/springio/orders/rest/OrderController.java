@@ -1,13 +1,20 @@
 package ru.springio.orders.rest;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Window;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.springio.orders.domain.Order;
 import ru.springio.orders.rest.dto.*;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import ru.springio.orders.rest.filter.OrderFilter;
+import ru.springio.orders.service.OrderService;
 
 
 @RestController
@@ -23,10 +30,16 @@ public class OrderController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<OrderDto> getActiveOrder(@RequestParam Long customerId) {
+    public ResponseEntity<OrderWithLinesDto> getActiveOrder(@RequestParam Long customerId) {
         return orderService.getActiveOrder(customerId)
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping
+    public PagedModel<OrderWithLinesDto> getAll(@ModelAttribute OrderFilter filter, Pageable pageable) {
+        Page<OrderWithLinesDto> orderWithLinesDtos = orderService.getAll(filter, pageable);
+        return new PagedModel<>(orderWithLinesDtos);
     }
 
     @PostMapping("/{orderId}/lines")

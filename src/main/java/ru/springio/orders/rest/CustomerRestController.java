@@ -2,18 +2,12 @@ package ru.springio.orders.rest;
 
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
 import lombok.RequiredArgsConstructor;
 import ru.springio.orders.domain.Customer;
-import ru.springio.orders.repository.CustomerRepository;
 import ru.springio.orders.rest.dto.CreateCustomerDto;
 import ru.springio.orders.rest.dto.CustomerDto;
-import ru.springio.orders.rest.mapper.CustomerMapper;
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
-import org.springframework.http.HttpStatus;
 import ru.springio.orders.service.CustomerService;
 
 @RestController
