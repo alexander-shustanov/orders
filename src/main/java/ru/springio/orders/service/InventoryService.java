@@ -1,0 +1,115 @@
+package ru.springio.orders.service;
+
+import lombok.RequiredArgsConstructor;
+
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import ru.springio.orders.domain.City;
+import ru.springio.orders.domain.Inventory;
+import ru.springio.orders.domain.Product;
+import ru.springio.orders.repository.CityRepository;
+import ru.springio.orders.repository.InventoryRepository;
+import ru.springio.orders.repository.ProductRepository;
+import ru.springio.orders.rest.dto.InventoryDto;
+import ru.springio.orders.rest.mapper.InventoryMapper;
+
+@Service
+@RequiredArgsConstructor
+public class InventoryService {
+
+    private final ProductRepository productRepository;
+
+    private final InventoryRepository inventoryRepository;
+
+    private final InventoryMapper inventoryMapper;
+
+    private final CityRepository cityRepository;
+
+    @Transactional
+    public InventoryDto supply(Long productId, Long cityId, Long amount) {
+        Product product = productRepository.getReferenceById(productId);
+        City city = cityRepository.getReferenceById(cityId);
+
+        Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
+                .orElseGet(() -> {
+                    Inventory created = new Inventory();
+                    created.setProduct(product);
+                    created.setCity(city);
+                    created.setReserved(0L);
+                    created.setAvailable(0L); // possible bug if not initialized
+                    return inventoryRepository.save(created);
+                });
+
+        inventory.setAvailable(inventory.getAvailable() + amount);
+
+        return inventoryMapper.toInventoryDto(inventory);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public InventoryDto reserve(Product product, City city, Long amount) {
+        Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
+                .filter(t -> amount > t.getAvailable())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Unable to reserve product"));
+
+        inventory.setAvailable(inventory.getAvailable() - amount);
+        inventory.setReserved(inventory.getReserved() + amount);
+
+        return inventoryMapper.toInventoryDto(inventory);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public InventoryDto productShipped(Product product, City city, Long amount) {
+        Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
+                .orElseThrow();
+
+        inventory.setReserved(inventory.getReserved() - amount);
+
+        return inventoryMapper.toInventoryDto(inventory);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void cancelReserve(Product product, City city, Long amount) {
+        Optional<Inventory> maybeInventory = inventoryRepository.findByProductAndCity(product, city);
+        if (maybeInventory.isEmpty()) {
+            return;
+        }
+        Inventory inventory = maybeInventory
+                .orElseThrow();
+
+        if (amount > inventory.getAvailable()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT);
+        }
+
+        inventory.setAvailable(inventory.getAvailable() + amount);
+        inventory.setReserved(inventory.getReserved() - amount);
+    }
+
+    public Page<InventoryDto> loadProductInventories(Long productId, Pageable pageable) {
+        return inventoryRepository.findByProduct(productRepository.getReferenceById(productId), pageable)
+                .map(inventoryMapper::toInventoryDto);
+    }
+
+    // @Transactional(propagation = Propagation.REQUIRED)
+    // public InventoryDto supply(Product product, Long amount) {
+    // Inventory inventory = inventoryRepository.getByProduct(product)
+    // .orElseGet(() -> {
+    // Inventory created = new Inventory();
+    // created.setProduct(product);
+    // created.setAvailable(0L);
+    // created.setReserved(0L);
+    // return inventoryRepository.save(created);
+    // });
+
+    // inventory.setAvailable(inventory.getAvailable() + amount);
+
+    // return inventoryMapper.toInventoryDto(inventory);
+    // }
+}
