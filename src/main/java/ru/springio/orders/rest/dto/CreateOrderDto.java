@@ -5,8 +5,5 @@ import lombok.Value;
 /**
  * DTO for {@link ru.springio.orders.domain.Order}
  */
-@Value
-public class CreateOrderDto {
-    Long customerId;
-    Long cityId;
+public record CreateOrderDto(Long customerId, Long cityId) {
 }

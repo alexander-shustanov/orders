@@ -11,10 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import ru.springio.orders.domain.*;
-import ru.springio.orders.repository.CustomerRepository;
-import ru.springio.orders.repository.OrderLineRepository;
-import ru.springio.orders.repository.OrderRepository;
-import ru.springio.orders.repository.ProductRepository;
+import ru.springio.orders.repository.*;
 import ru.springio.orders.rest.dto.OrderWithLinesDto;
 import ru.springio.orders.rest.dto.CreateOrderDto;
 import ru.springio.orders.rest.dto.OrderDto;
@@ -50,7 +47,10 @@ public class OrderService {
 
     public OrderDto create(CreateOrderDto orderDto) {
         Optional<Order> existing = orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(
-            customerRepository.getReferenceById(orderDto.getCustomerId()), OrderStatus.NEW);
+            customerRepository.getReferenceById(orderDto.customerId()),
+            OrderStatus.NEW
+        );
+
         if (existing.isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
@@ -64,44 +64,6 @@ public class OrderService {
 
         return orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(customer, OrderStatus.NEW)
             .map(orderMapper::toOrderWithLinesDto);
-    }
-
-    @Transactional
-    public OrderDto changeProductsAmount(Long orderId, Long productId, Long amount) {
-        Order order = getOrderOrThrow(orderId);
-
-        Product product = productRepository.findById(productId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-
-        if (order.getOrderStatus() != OrderStatus.NEW) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT);
-        }
-
-        Optional<OrderLine> existing = order.getOrderLines().stream()
-            .filter(orderLine -> orderLine.getProduct().getId().equals(productId))
-            .findFirst();
-
-        if (existing.isPresent()) {
-            OrderLine orderLine = existing.get();
-
-            if (amount == 0) {
-                orderLineRepository.delete(orderLine);
-                order.getOrderLines().remove(orderLine);
-            } else {
-                orderLine.setAmount(amount);
-            }
-        } else {
-            OrderLine orderLine = new OrderLine();
-            orderLine.setProduct(product);
-            orderLine.setAmount(amount);
-            orderLine.setOrder(order);
-
-            order.getOrderLines().add(orderLineRepository.save(orderLine));
-        }
-
-        recalculateOrderSum(order);
-
-        return orderMapper.toOrderDto(order);
     }
 
     public OrderLineDto addProduct(Long orderId, Long productId, Long amount) {
@@ -229,17 +191,17 @@ public class OrderService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
+    public Page<OrderWithLinesDto> getAll(OrderFilter filter, Pageable pageable) {
+        Specification<Order> spec = filter.toSpecification();
+        Page<Order> orders = orderRepository.findAll(spec, pageable);
+        return orders.map(orderMapper::toOrderWithLinesDto);
+    }
+
     private void recalculateOrderSum(Order order) {
         order.setSum(
             order.getOrderLines().stream()
                 .map(orderLine -> orderLine.getProduct().getPrice()
                     .multiply(BigDecimal.valueOf(orderLine.getAmount())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
-    }
-
-    public Page<OrderWithLinesDto> getAll(OrderFilter filter, Pageable pageable) {
-        Specification<Order> spec = filter.toSpecification();
-        Page<Order> orders = orderRepository.findAll(spec, pageable);
-        return orders.map(orderMapper::toOrderWithLinesDto);
     }
 }
