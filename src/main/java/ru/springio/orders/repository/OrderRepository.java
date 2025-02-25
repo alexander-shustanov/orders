@@ -9,5 +9,5 @@ import ru.springio.orders.domain.OrderStatus;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
-    Optional<Order> findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(Customer customer, OrderStatus orderStatus);
+    Optional<Order> findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(Customer customer, OrderStatus orderStatus);
 }

@@ -46,7 +46,7 @@ public class OrderService {
     private final InventoryService inventoryService;
 
     public OrderDto create(CreateOrderDto orderDto) {
-        Optional<Order> existing = orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(
+        Optional<Order> existing = orderRepository.findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(
             customerRepository.getReferenceById(orderDto.customerId()),
             OrderStatus.NEW
         );
@@ -62,7 +62,7 @@ public class OrderService {
     public Optional<OrderWithLinesDto> getActiveOrder(Long customerId) {
         Customer customer = customerRepository.getReferenceById(customerId);
 
-        return orderRepository.findFirstByCustomerAndOrderStatusOrderByCreatedDateDesc(customer, OrderStatus.NEW)
+        return orderRepository.findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(customer, OrderStatus.NEW)
             .map(orderMapper::toOrderWithLinesDto);
     }
 
@@ -188,7 +188,9 @@ public class OrderService {
 
     private Order getOrderOrThrow(Long orderId) {
         return orderRepository.findById(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Order with id %s not found".formatted(orderId))
+            );
     }
 
     public Page<OrderWithLinesDto> getAll(OrderFilter filter, Pageable pageable) {
