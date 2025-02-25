@@ -12,7 +12,7 @@ val productIds: List<Long> by GET("$host/products") then {
 GET("$host/customers")
 
 GET("$host/customers/{id}") {
-    pathParams("id", 1)
+    pathParam("id", 1)
 }
 
 val customerIds by GET("$host/customers") then {
@@ -47,15 +47,15 @@ val activeOrderId by GET("$host/orders/active?customerId=${customerIds[1]}") the
 }
 
 DELETE("$host/orders/{orderId}") {
-    pathParams("orderId", activeOrderId)
+    pathParam("orderId", activeOrderId)
 }
 
 GET("$host/orders/{orderId}") {
-    pathParams("orderId", activeOrderId)
+    pathParam("orderId", activeOrderId)
 }
 
 POST("$host/orders/{orderId}/lines") {
-    pathParams("orderId", activeOrderId)
+    pathParam("orderId", activeOrderId)
     header("Content-Type", "application/json")
     body(
         """
@@ -69,7 +69,7 @@ POST("$host/orders/{orderId}/lines") {
 }
 
 POST("$host/orders/{orderId}/pay") {
-    pathParams("orderId", activeOrderId)
+    pathParam("orderId", activeOrderId)
 }
 
 POST("$host/inventory/supply") {
@@ -86,7 +86,7 @@ POST("$host/inventory/supply") {
 }
 
 GET("$host/inventory/for-product/{productId}") {
-    pathParams("productId", productIds[0])
+    pathParam("productId", productIds[0])
 }
 
 flow("Do supply") {
@@ -98,7 +98,7 @@ flow("Do supply") {
 
     for (cityId in cityIds) {
         for (productId in productIds) {
-            val inventory by POST("$host/inventory/supply") {
+            POST("$host/inventory/supply") {
                 header("Content-Type", "application/json")
                 body(
                     """
@@ -110,7 +110,6 @@ flow("Do supply") {
         """.trimIndent()
                 )
             }
-            inventory // вот это тут не нужно, но пока работает только так
         }
     }
 }
