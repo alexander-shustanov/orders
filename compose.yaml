@@ -2,11 +2,11 @@ services:
     postgres:
         image: 'postgres:latest'
         environment:
-          - 'POSTGRES_DB=orders'
-          - 'POSTGRES_PASSWORD=root'
-          - 'POSTGRES_USER=root'
+            - 'POSTGRES_DB=orders'
+            - 'POSTGRES_PASSWORD=root'
+            - 'POSTGRES_USER=root'
         ports:
-          - '5432:5432'
+            - '5432:5432'
     kafka:
         image: confluentinc/cp-kafka:7.9.0
         restart: "no"
@@ -49,5 +49,20 @@ services:
             timeout: 5s
             start_period: 60s
             retries: 5
+    minio:
+        image: minio/minio:latest
+        container_name: minio
+        environment:
+            MINIO_ROOT_USER: minioadmin
+            MINIO_ROOT_PASSWORD: minioadmin
+        volumes:
+            - minio_data:/data
+            - minio_config:/root/.minio
+        ports:
+            - "9000:9000"    # MinIO Web UI
+            - "9001:9001"    # MinIO Console
+        command: server /data --console-address ":9001"
 volumes:
     kafka_data:
+    minio_data:
+    minio_config:

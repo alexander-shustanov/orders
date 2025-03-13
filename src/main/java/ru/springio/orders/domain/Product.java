@@ -22,4 +22,7 @@ public class Product {
 
     @Column(name = "price", nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "picture", nullable = true)
+    private String picture;
 }

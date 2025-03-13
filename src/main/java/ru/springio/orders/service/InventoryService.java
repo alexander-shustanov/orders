@@ -29,35 +29,33 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
 
-    private final InventoryMapper inventoryMapper;
-
     private final CityRepository cityRepository;
 
     @Transactional
-    public InventoryDto supply(Long productId, Long cityId, Long amount) {
+    public Inventory supply(Long productId, Long cityId, Long amount) {
         Product product = productRepository.getReferenceById(productId);
         City city = cityRepository.getReferenceById(cityId);
 
         Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
-                .orElseGet(() -> {
-                    Inventory created = new Inventory();
-                    created.setProduct(product);
-                    created.setCity(city);
-                    created.setReserved(0L);
-                    created.setAvailable(0L); // demo: possible bug if not initialized
-                    return inventoryRepository.save(created);
-                });
+            .orElseGet(() -> {
+                Inventory created = new Inventory();
+                created.setProduct(product);
+                created.setCity(city);
+                created.setReserved(0L);
+                created.setAvailable(0L); // demo: possible bug if not initialized
+                return inventoryRepository.save(created);
+            });
 
         inventory.setAvailable(inventory.getAvailable() + amount);
 
-        return inventoryMapper.toInventoryDto(inventory);
+        return inventory;
     }
 
     @Transactional(propagation = Propagation.REQUIRED)
     public void reserve(Product product, City city, Long amount) {
         Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
-                .filter(t -> amount < t.getAvailable()) // demo: change sign
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Unable to reserve product"));
+            .filter(t -> amount < t.getAvailable()) // demo: change sign
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Unable to reserve product"));
 
         inventory.setAvailable(inventory.getAvailable() - amount);
         inventory.setReserved(inventory.getReserved() + amount);
@@ -66,7 +64,7 @@ public class InventoryService {
     @Transactional(propagation = Propagation.REQUIRED)
     public void productShipped(Product product, City city, Long amount) {
         Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
-                .orElseThrow();
+            .orElseThrow();
 
         inventory.setReserved(inventory.getReserved() - amount);
     }
@@ -78,7 +76,7 @@ public class InventoryService {
             return;
         }
         Inventory inventory = maybeInventory
-                .orElseThrow();
+            .orElseThrow();
 
         if (amount > inventory.getAvailable()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -88,8 +86,7 @@ public class InventoryService {
         inventory.setReserved(inventory.getReserved() - amount);
     }
 
-    public Page<InventoryDto> loadProductInventories(Long productId, Pageable pageable) {
-        return inventoryRepository.findByProduct(productRepository.getReferenceById(productId), pageable)
-                .map(inventoryMapper::toInventoryDto);
+    public Page<Inventory> loadProductInventories(Long productId, Pageable pageable) {
+        return inventoryRepository.findByProduct(productRepository.getReferenceById(productId), pageable);
     }
 }

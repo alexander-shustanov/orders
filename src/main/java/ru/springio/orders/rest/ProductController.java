@@ -5,8 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.springio.orders.domain.Product;
+import ru.springio.orders.rest.dto.CreateProductDto;
+import ru.springio.orders.rest.dto.ProductDto;
+import ru.springio.orders.rest.mapper.ProductMapper;
 import ru.springio.orders.service.ProductService;
 
 import java.io.IOException;
@@ -19,30 +24,57 @@ public class ProductController {
 
     private final ProductService productService;
 
+    private final ProductMapper productMapper;
+
     @GetMapping
-    public PagedModel<Product> getAll(Pageable pageable) {
+    public PagedModel<ProductDto> getAll(Pageable pageable) {
         Page<Product> products = productService.getAll(pageable);
-        return new PagedModel<>(products);
+        return new PagedModel<>(
+            products.map(productMapper::toProductDto)
+        );
+    }
+
+    @Nullable
+    @GetMapping("/{id}/photo")
+    public String getProductPhotoUrl(@PathVariable Long id) {
+        return productService.getProductPhotoUrl(id);
     }
 
     @GetMapping("/{id}")
-    public Product getOne(@PathVariable Long id) {
-        return productService.getOne(id);
+    public ProductDto getOne(@PathVariable Long id) {
+        return productMapper.toProductDto(productService.getOne(id));
     }
 
     @GetMapping("/by-ids")
-    public List<Product> getMany(@RequestParam List<Long> ids) {
-        return productService.getMany(ids);
+    public List<ProductDto> getMany(@RequestParam List<Long> ids) {
+        return productService.getMany(ids)
+            .stream()
+            .map(productMapper::toProductDto)
+            .toList();
     }
 
     @PostMapping
-    public Product create(@RequestBody Product product) {
-        return productService.create(product);
+    public ProductDto create(@RequestBody CreateProductDto product) {
+        return productMapper.toProductDto(
+            productService.create(product)
+        );
+    }
+
+    @PostMapping("/{id}/rename")
+    public ProductDto renameProduct(@PathVariable Long id, @RequestParam String name) {
+        return productMapper.toProductDto(
+            productService.rename(id, name)
+        );
     }
 
     @PatchMapping("/{id}")
-    public Product patch(@PathVariable Long id, @RequestBody JsonNode patchNode) throws IOException {
-        return productService.patch(id, patchNode);
+    public ProductDto patch(
+        @PathVariable Long id,
+        @RequestPart("data") JsonNode patchNode,
+        @RequestPart(value = "file", required = false) MultipartFile imageFile
+    ) throws IOException {
+        Product product = productService.patch(id, patchNode, imageFile);
+        return productMapper.toProductDto(product);
     }
 
     @PatchMapping
@@ -51,8 +83,13 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public Product delete(@PathVariable Long id) {
-        return productService.delete(id);
+    public ProductDto delete(@PathVariable Long id) {
+        Product product = productService.delete(id);
+        if (product != null) {
+            return productMapper.toProductDto(product);
+        } else {
+            return null;
+        }
     }
 
     @DeleteMapping

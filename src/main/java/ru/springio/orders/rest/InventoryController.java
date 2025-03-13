@@ -19,18 +19,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 public class InventoryController {
 
-    private final InventoryService inventoryService;
+    private final InventoryControllerService inventoryService;
 
     @GetMapping("/for-product/{productId}")
     public PagedModel<InventoryDto> loadProductInventories(@PathVariable Long productId, Pageable pageable) {
-        return new PagedModel<>(inventoryService.loadProductInventories(productId, pageable));
+        return inventoryService.loadProductInventories(productId, pageable);
     }
 
     @PostMapping("/supply")
     public InventoryDto supply(@RequestBody SupplyDto supplyDto) {
-        return inventoryService.supply(
-            supplyDto.productId(),
-            supplyDto.cityId(),
-            supplyDto.amount());
+        return inventoryService.supply(supplyDto);
     }
 }
