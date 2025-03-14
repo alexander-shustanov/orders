@@ -21,11 +21,13 @@ resource "yandex_resourcemanager_folder_iam_member" "storage-admin" {
 }
 
 resource "yandex_iam_service_account_static_access_key" "storage-editor-static-key" {
+    depends_on = [yandex_resourcemanager_folder_iam_member.storage-editor]
     service_account_id = yandex_iam_service_account.storage-editor.id
     description        = "static access key for object storage"
 }
 
 resource "yandex_iam_service_account_static_access_key" "storage-admin-static-key" {
+    depends_on = [yandex_resourcemanager_folder_iam_member.storage-admin]
     service_account_id = yandex_iam_service_account.storage-admin.id
     description        = "static access key for object storage"
 }

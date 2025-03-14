@@ -144,7 +144,7 @@ public class OrderService {
 
         OrderDto orderDto = orderMapper.toOrderDto(order);
 
-        kafkaTemplate.send("order", orderDto);
+        kafkaTemplate.send("order-pay", orderDto);
 
         return orderDto;
     }

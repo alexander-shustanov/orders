@@ -192,3 +192,24 @@ flow("create cities") {
         }
     }
 }
+
+
+flow("create users") {
+    val customers = listOf("Alex", "John", "Peter", "Ilia", "Simon", "Robert", "David")
+
+    for (customer in customers) {
+        POST("$host/customers") {
+            header("Content-Type", "application/json")
+            body(
+                """
+        {
+            "name": "$customer",
+            "email": "$customer@gmail.com"
+        }
+        """.trimIndent()
+            )
+
+        }
+    }
+
+}

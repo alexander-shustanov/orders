@@ -15,7 +15,7 @@ data "yandex_compute_image" "coi" {
 
 resource "yandex_compute_instance" "orders-compute-cloud" {
     platform_id        = "standard-v3"
-    zone               = "ru-central1-d"
+    zone               = "ru-central1-a"
     service_account_id = yandex_iam_service_account.image-puller.id
     resources {
         cores  = 2
@@ -29,7 +29,8 @@ resource "yandex_compute_instance" "orders-compute-cloud" {
     }
 
     network_interface {
-        subnet_id = data.yandex_vpc_subnet.default-ru-central1-d.id
+        # subnet_id = data.yandex_vpc_subnet.default-ru-central1-d.id
+        subnet_id = yandex_vpc_subnet.orders-vps-subnet.id
         nat       = true
     }
 
@@ -44,6 +45,9 @@ resource "yandex_compute_instance" "orders-compute-cloud" {
                 storage_bucket      = yandex_storage_bucket.products.bucket
                 storage_access_key  = yandex_iam_service_account_static_access_key.storage-editor-static-key.access_key
                 storage_secret_key  = yandex_iam_service_account_static_access_key.storage-editor-static-key.secret_key
+                kafka_url           = "${local.kafka_fqdn}:${local.kafka_port}"
+                kafka_user          = yandex_mdb_kafka_user.orders-service-user.name
+                kafka_password      = yandex_mdb_kafka_user.orders-service-user.password
             }
         )
 

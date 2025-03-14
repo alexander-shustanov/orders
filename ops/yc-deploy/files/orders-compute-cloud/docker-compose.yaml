@@ -29,6 +29,9 @@ services:
             STORAGE_BUCKET: ${storage_bucket}
             STORAGE_ACCESSKEY: ${storage_access_key}
             STORAGE_SECRETKEY: ${storage_secret_key}
+            SPRING_KAFKA_BOOTSTRAPSERVERS: ${kafka_url}
+            KAFKA_USER: ${kafka_user}
+            KAFKA_PASSWORD: ${kafka_password}
 
 networks:
     main:

@@ -1,7 +1,8 @@
 resource "yandex_mdb_postgresql_cluster" "db" {
     name        = "db"
     environment = "PRODUCTION"
-    network_id  = data.yandex_vpc_network.default.id
+    network_id  = yandex_vpc_network.orders-vpc.id
+
     config {
         version = "17"
         resources {
@@ -19,10 +20,9 @@ resource "yandex_mdb_postgresql_cluster" "db" {
 
     host {
         name      = "host-1"
-        zone      = "ru-central1-d"
-        subnet_id = data.yandex_vpc_subnet.default-ru-central1-d.id
+        zone      = "ru-central1-a"
+        subnet_id = yandex_vpc_subnet.orders-vps-subnet.id
     }
-
 }
 
 resource "yandex_mdb_postgresql_user" "db" {
