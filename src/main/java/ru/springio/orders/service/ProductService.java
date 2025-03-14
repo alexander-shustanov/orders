@@ -15,6 +15,7 @@ import ru.springio.orders.domain.Product;
 import ru.springio.orders.repository.ProductRepository;
 import ru.springio.orders.rest.dto.CreateProductDto;
 import ru.springio.orders.rest.mapper.ProductMapper;
+import ru.springio.orders.service.file.FileService;
 
 import java.io.IOException;
 import java.util.Collection;

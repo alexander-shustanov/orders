@@ -1,9 +1,8 @@
-package ru.springio.orders.service;
+package ru.springio.orders.service.file;
 
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.http.Method;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,10 +15,12 @@ import java.util.UUID;
 @Service
 public class FileService {
 
-    private final MinioClient minioClient;
+    private final AmazonS3 amazonS3;
 
-    @Value("${minio.bucket}")
+    @Value("${storage.bucket}")
     private String bucket;
+
+    private final FileUrlBuilder fileUrlBuilder;
 
     @SneakyThrows
     public String uploadFile(MultipartFile file) {
@@ -30,24 +31,24 @@ public class FileService {
 
         }
 
-        minioClient.putObject(
-            PutObjectArgs.builder()
-                .bucket(bucket)
-                .object(fileName)
-                .stream(file.getInputStream(), file.getSize(), -1)
-                .build()
-        );
+        try {
+            amazonS3.putObject(
+                new PutObjectRequest(
+                    bucket,
+                    fileName,
+                    file.getInputStream(),
+                    new ObjectMetadata()
+                )
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         return fileName;
     }
 
     @SneakyThrows
     public String fileUrl(String fileName) {
-        return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
-            .bucket(bucket)
-            .method(Method.GET)
-            .object(fileName)
-            .build()
-        );
+        return fileUrlBuilder.fileUrl(fileName);
     }
 }

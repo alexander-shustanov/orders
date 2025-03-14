@@ -1,4 +1,5 @@
 import org.assertj.core.api.Assertions
+import java.io.File
 
 val host: String by env
 
@@ -117,3 +118,77 @@ flow("Do supply") {
 GET("$host/orders?customerId=${customerIds[1]}") {
 }
 
+
+PATCH("$host/products/{id}") {
+    pathParam("id", 1)
+    multipart {
+        part(name = "data", contentType = "application/json") {
+            body(
+                """
+                {
+                    "price": 100.0
+                }
+            """.trimIndent()
+            )
+        }
+
+        file(
+            name = "file",
+            fileName = "img.png",
+            File("/Users/alexander/Desktop/Screenshot 2025-03-10 at 19.06.45.png")
+        )
+    }
+}
+
+val photoPath by GET("$host/products/{id}/photo") {
+    pathParam("id", 1)
+} then {
+    body!!.string()
+}
+
+flow("create products") {
+    val products = listOf(
+        "Apple" to 1.2,
+        "Banana" to 0.8,
+        "Cherry" to 2.5,
+        "Date" to 3.0,
+        "Elderberry" to 4.0
+    )
+
+    for ((name, price) in products) {
+        POST("$host/products") {
+            header("Content-Type", "application/json")
+            body(
+                """
+        {
+            "name": "$name",
+            "price": $price
+        }
+        """.trimIndent()
+            )
+        }
+    }
+}
+
+flow("create cities") {
+    val cities = listOf(
+        "Samara",
+        "Moscow",
+        "Saint-Petersburg",
+        "London",
+        "New-York",
+    )
+
+    for (name in cities) {
+        POST("$host/cities") {
+            header("Content-Type", "application/json")
+            body(
+                """
+        {
+            "name": "$name"
+        }
+        """.trimIndent()
+            )
+        }
+    }
+}

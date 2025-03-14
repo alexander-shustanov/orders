@@ -2,9 +2,7 @@ package ru.springio.orders.rest;
 
 import java.util.List;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import lombok.RequiredArgsConstructor;
 import ru.springio.orders.domain.City;
@@ -20,5 +18,10 @@ public class CityController {
     @GetMapping
     public List<City> findAll() {
         return cityRepository.findAll();
+    }
+
+    @PostMapping
+    public City create(@RequestBody City city) {
+        return cityRepository.save(city);
     }
 }
