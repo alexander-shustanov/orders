@@ -29,7 +29,6 @@ resource "yandex_compute_instance" "orders-compute-cloud" {
     }
 
     network_interface {
-        # subnet_id = data.yandex_vpc_subnet.default-ru-central1-d.id
         subnet_id = yandex_vpc_subnet.orders-vps-subnet.id
         nat       = true
     }
@@ -54,16 +53,3 @@ resource "yandex_compute_instance" "orders-compute-cloud" {
         "user-data" = file("${path.module}/files/orders-compute-cloud/user-data.yaml")
     }
 }
-
-# resource "yandex_compute_filesystem" "orders-storage" {
-#     name  = "orders-storage"
-#     type  = "network-hdd"
-#     zone  = "ru-central1-a"
-#     size  = 10
-# }
-
-# resource "yandex_compute_disk" "storage" {
-#     name     = "orders-storage"
-#     type     = "network-ssd"
-#     zone     = "ru-central1-a"
-# }
