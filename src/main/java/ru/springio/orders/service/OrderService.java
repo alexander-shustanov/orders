@@ -41,7 +41,7 @@ public class OrderService {
 
     private final OrderLineMapper orderLineMapper;
 
-    private final KafkaTemplate<String, OrderDto> kafkaTemplate;
+//    private final KafkaTemplate<String, OrderDto> kafkaTemplate;
 
     private final InventoryService inventoryService;
 
@@ -144,7 +144,7 @@ public class OrderService {
 
         OrderDto orderDto = orderMapper.toOrderDto(order);
 
-        kafkaTemplate.send("order-pay", orderDto);
+//        kafkaTemplate.send("order-pay", orderDto);
 
         return orderDto;
     }
@@ -163,8 +163,8 @@ public class OrderService {
         order.setOrderStatus(OrderStatus.CANCELED);
     }
 
-    @KafkaListener(topics = "orderDelivery", containerFactory = "orderDeliveryInfoDtoListenerFactory")
-    @Transactional
+//    @KafkaListener(topics = "orderDelivery", containerFactory = "orderDeliveryInfoDtoListenerFactory")
+//    @Transactional
     public void consumeOrderDeliveryInfoDto(OrderDeliveryInfoDto orderDeliveryInfoDto) {
         Order order = getOrderOrThrow(orderDeliveryInfoDto.id());
         if (orderDeliveryInfoDto.delivered()) {

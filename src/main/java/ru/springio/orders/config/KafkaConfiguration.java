@@ -26,7 +26,7 @@ import ru.springio.orders.service.dto.OrderDeliveryInfoDto;
 
 import java.util.Map;
 
-@Configuration
+//@Configuration
 public class KafkaConfiguration {
 
     @Value("${kafka.username}")

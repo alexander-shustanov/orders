@@ -24,13 +24,6 @@ useCase("create products") {
     }
 }
 
-
-POST("foo") {
-    formData {
-        field("test", "test")
-    }
-}
-
 useCase("create cities") {
     val cities = listOf(
         "Samara",
@@ -55,7 +48,7 @@ useCase("create cities") {
 }
 
 
-useCase("create users") {
+useCase("create customers") {
     val customers = listOf("Alex", "John", "Peter", "Ilia", "Simon", "Robert", "David")
 
     for (customer in customers) {
