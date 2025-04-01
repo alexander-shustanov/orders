@@ -62,12 +62,6 @@ services:
             - "9000:9000"    # MinIO Web UI
             - "9001:9001"    # MinIO Console
         command: server /data --console-address ":9001"
-    orders:
-        image: orders:latest
-        build: .
-        restart: "no"
-        ports:
-            - "8080:8080"
 volumes:
     kafka_data:
     minio_data:
