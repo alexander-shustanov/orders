@@ -72,7 +72,7 @@ useCase {
 
     for (city in cities) {
         for (productId in productIds) {
-            POST("$host/inventory/supply") {
+            val foo by POST("$host/inventory/supply") {
                 header("Content-Type", "application/json")
                 body(
                     """
@@ -83,6 +83,8 @@ useCase {
         }
         """.trimIndent()
                 )
+            }  then {
+                Assertions.assertThat(code).isEqualTo(200)
             }
         }
     }

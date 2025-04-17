@@ -1,0 +1,31 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, connekt_ci ]
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Start Java application
+        run: |
+          nohup mvn spring-boot:run -DskipTests &
+
+      - name: Run ConneKt tests
+        uses: Amplicode/connekt-github-action@v1.0.1
+        with:
+          files: |
+            ./src/connekt/test.connekt.kts
+          env_file: ./src/connekt/connekt.env.json
+          env: ci
