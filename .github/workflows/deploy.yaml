@@ -29,26 +29,26 @@ jobs:
           terraform init \
             -backend-config="access_key=${{ secrets.YC_ACCESS_KEY }}" \
             -backend-config="secret_key=${{ secrets.YC_SECRET_KEY }}" \
-            -var folder_id=${{ env.FOLDER_ID }} \
+            -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }}
 
       - name: Terraform Validate
         run: |
           terraform validate \
-           -var folder_id=${{ env.FOLDER_ID }} \
+           -var folder_id=${{ vars.FOLDER_ID }} \
            -var orders_version=${{ env.RELEASE_VERSION }}
 
 
       - name: Terraform Plan
         run: |
           terraform plan \
-            -var folder_id=${{ env.FOLDER_ID }} \
+            -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }}
 
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve \
-            -var folder_id=${{ env.FOLDER_ID }} \
+            -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }}
 
       - name: Get Terraform Output
