@@ -1,3 +1,4 @@
+import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import java.net.ConnectException
 
@@ -32,7 +33,8 @@ useCase("create products") {
 
     for ((name, price) in products) {
         POST("$host/products") {
-            header("Content-Type", "application/json")
+            contentType("application/json")
+
             body(
                 """
         {
@@ -56,7 +58,8 @@ useCase("create cities") {
 
     for (name in cities) {
         POST("$host/cities") {
-            header("Content-Type", "application/json")
+            contentType("application/json")
+
             body(
                 """
         {
@@ -73,7 +76,8 @@ useCase("create customers") {
 
     for (customer in customers) {
         POST("$host/customers") {
-            header("Content-Type", "application/json")
+            contentType("application/json")
+
             body(
                 """
         {
@@ -86,3 +90,78 @@ useCase("create customers") {
     }
 }
 
+val cities: List<Long> by GET("$host/cities") then {
+    assertThat(code).isEqualTo(200)
+
+    jsonPath().readList("$[*].id", Long::class.java)
+}
+
+val products: List<Long> by GET("$host/products") then {
+    assertThat(code).isEqualTo(200)
+
+    jsonPath().readList("$.content[*].id", Long::class.java)
+}
+
+val customers: List<Long> by GET("$host/customers") then {
+    assertThat(code).isEqualTo(200)
+
+    jsonPath().readList("$.content[*].id", Long::class.java)
+}
+
+useCase("Do supply") {
+    for (cityId in cities) {
+        for (productId in products) {
+            POST("$host/inventory/supply") {
+                contentType("application/json")
+
+                body(
+                    """
+        {
+            "productId": $productId,
+            "cityId": ${cityId},
+            "amount": ${Random.nextInt(100, 1000)}
+        }
+        """.trimIndent()
+                )
+            }
+        }
+    }
+}
+
+useCase("Create Order") {
+    val orderId by POST("$host/orders") {
+        contentType("application/json")
+
+        body(
+            """
+        {
+            "customerId" : ${customers.first()},
+            "cityId": ${cities.first()}
+        }
+    """.trimIndent()
+        )
+    } then {
+        jsonPath().readLong("$.id")
+    }
+
+    for (product in products) {
+        POST("http://localhost:8080/orders/{orderId}/lines") {
+            pathParam("orderId", orderId)
+
+            contentType("application/json")
+
+            body(
+                """
+                {
+                    "productId": ${product},
+                    "amount": 1
+                }"""
+            )
+
+        }
+    }
+
+    POST("http://localhost:8080/orders/{orderId}/pay") {
+        pathParam("orderId", orderId)
+    }
+}

@@ -1,0 +1,36 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy:
+    name: 'Terraform Destroy'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env:
+      DEPLOY_DIR: ops/yc-deploy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Write YC Service Account Key
+        env:
+          KEY_JSON: ${{ secrets.KEY_JSON }}
+        run: |
+          echo $KEY_JSON | base64 --decode > /tmp/yc-key.json
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init
+        run: |
+          cd $DEPLOY_DIR
+          terraform destroy \
+            -var folder_id=${{ vars.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }} \
+            -var service_account_key_file=/tmp/yc-key.json

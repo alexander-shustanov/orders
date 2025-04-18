@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
 
+    env:
+      DEPLOY_DIR: ops/yc-deploy
+
     outputs:
       app_ip: ${{ steps.tf-output.outputs.app_ip }}
 
@@ -41,7 +44,7 @@ jobs:
 
       - name: Terraform Init
         run: |
-          cd ops/yc-deploy
+          cd $DEPLOY_DIR
           terraform init \
             -backend-config="access_key=${{ secrets.YC_ACCESS_KEY }}" \
             -backend-config="secret_key=${{ secrets.YC_SECRET_KEY }}" \
@@ -50,12 +53,12 @@ jobs:
 
       - name: Terraform Validate
         run: |
-          cd ops/yc-deploy
+          cd $DEPLOY_DIR
           terraform validate
 
       - name: Terraform Plan
         run: |
-          cd ops/yc-deploy
+          cd $DEPLOY_DIR
           terraform plan \
             -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }} \
@@ -64,7 +67,7 @@ jobs:
 
       - name: Terraform Apply
         run: |
-          cd ops/yc-deploy
+          cd $DEPLOY_DIR
           terraform apply -auto-approve \
             -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }} \
@@ -73,9 +76,11 @@ jobs:
       - name: Get Terraform Output
         id: tf-output
         run: |
-          cd ops/yc-deploy
+          cd $DEPLOY_DIR
           echo "app_ip=$(terraform output -raw orders-compute-cloud-public-ip)" >> "$GITHUB_OUTPUT"
 
+      - name: Cleanup Key File
+        run: rm -f /tmp/yc-key.json
 
   smoke-tests:
     runs-on: ubuntu-latest
@@ -89,7 +94,5 @@ jobs:
         with:
           files: |
             ./src/connekt/test.connekt.kts
-          env_file: ./src/connekt/connekt.env.json
-          env: ci
           env_params: |
             host=http://${{ needs.terraform.outputs.app_ip }}:8080
