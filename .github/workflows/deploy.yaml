@@ -21,7 +21,8 @@ jobs:
           terraform_version: 1.7.5
 
       - name: Write YC Service Account Key
-        run: echo "${{ secrets.KEY_JSON }}" > /tmp/yc-key.json
+        run: |
+          printf "%s" "${{ secrets.YC_SA_KEY }}" > /tmp/yc-key.json
 
       - name: Extract release name from branch
         run: |
