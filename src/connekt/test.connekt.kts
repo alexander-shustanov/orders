@@ -1,4 +1,5 @@
 import org.assertj.core.api.Assertions.assertThat
+import java.net.ConnectException
 
 val host: String by env
 
@@ -14,7 +15,7 @@ useCase("Wait app launch") {
             println("App is healthy")
 
             return@useCase
-        } catch (e: Exception) {
+        } catch (e: ConnectException) {
             Thread.sleep(10_000)
         }
     }

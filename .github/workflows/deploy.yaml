@@ -1,0 +1,74 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - yc_deploy
+
+jobs:
+  terraform:
+    name: 'Terraform Deploy'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Extract release name from branch
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="access_key=${{ secrets.YC_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.YC_SECRET_KEY }}" \
+            -var folder_id=${{ env.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }}
+
+      - name: Terraform Validate
+        run: |
+          terraform validate \
+           -var folder_id=${{ env.FOLDER_ID }} \
+           -var orders_version=${{ env.RELEASE_VERSION }}
+
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var folder_id=${{ env.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }}
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var folder_id=${{ env.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }}
+
+      - name: Get Terraform Output
+        id: tf-output
+        run: |
+          echo "APP_IP=$(terraform output -raw orders-compute-cloud-public-ip)" >> $GITHUB_ENV
+
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ConneKt tests
+        uses: Amplicode/connekt-github-action@v1.0.1
+        with:
+          files: |
+            ./src/connekt/test.connekt.kts
+          env_file: ./src/connekt/connekt.env.json
+          env: ci
+          env_params: |
+            host=${{ env.APP_IP }}
