@@ -34,9 +34,7 @@ jobs:
 
       - name: Terraform Validate
         run: |
-          terraform validate \
-           -var folder_id=${{ vars.FOLDER_ID }} \
-           -var orders_version=${{ env.RELEASE_VERSION }}
+          terraform validate
 
 
       - name: Terraform Plan
