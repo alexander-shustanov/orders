@@ -76,11 +76,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run ConneKt tests
-        uses: Amplicode/connekt-github-action@v1.0.1
+        uses: Amplicode/connekt-github-action@v1.0.2
         with:
           files: |
             ./src/connekt/test.connekt.kts
           env_file: ./src/connekt/connekt.env.json
           env: ci
           env_params: |
-            host=${{ env.APP_IP }}
+            host=http://${{ env.APP_IP }}:8080
