@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
 
+    outputs:
+      app_ip: ${{ steps.tf-output.outputs.app_ip }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -65,7 +68,7 @@ jobs:
         id: tf-output
         run: |
           cd ops/yc-deploy
-          echo "APP_IP=$(terraform output -raw orders-compute-cloud-public-ip)" >> $GITHUB_ENV
+          echo "app_ip=$(terraform output -raw orders-compute-cloud-public-ip)" >> "$GITHUB_OUTPUT"
 
 
   smoke-tests:
@@ -83,4 +86,4 @@ jobs:
           env_file: ./src/connekt/connekt.env.json
           env: ci
           env_params: |
-            host=http://${{ env.APP_IP }}:8080
+            host=http://${{ needs.terraform.outputs.app_ip }}:8080
