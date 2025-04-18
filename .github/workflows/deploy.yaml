@@ -1,0 +1,95 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - yc_deploy/*
+
+jobs:
+  terraform:
+    name: 'Terraform Deploy'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    outputs:
+      app_ip: ${{ steps.tf-output.outputs.app_ip }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract release name from branch
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/heads/yc_deploy/}" >> $GITHUB_ENV
+
+      - name: Write YC Service Account Key
+        env:
+          KEY_JSON: ${{ secrets.KEY_JSON }}
+        run: |
+          echo $KEY_JSON | base64 --decode > /tmp/yc-key.json
+
+      - name: Build Image
+        run: |
+          cat /tmp/yc-key.json | docker login -u json_key --password-stdin cr.yandex
+          docker build . -t cr.yandex/crpbk8g4u7lsdfqsm38s/orders:${{ env.RELEASE_VERSION }}
+          docker push cr.yandex/crpbk8g4u7lsdfqsm38s/orders:${{ env.RELEASE_VERSION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Init
+        run: |
+          cd ops/yc-deploy
+          terraform init \
+            -backend-config="access_key=${{ secrets.YC_ACCESS_KEY }}" \
+            -backend-config="secret_key=${{ secrets.YC_SECRET_KEY }}" \
+            -var folder_id=${{ vars.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }}
+
+      - name: Terraform Validate
+        run: |
+          cd ops/yc-deploy
+          terraform validate
+
+      - name: Terraform Plan
+        run: |
+          cd ops/yc-deploy
+          terraform plan \
+            -var folder_id=${{ vars.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }} \
+            -var service_account_key_file=/tmp/yc-key.json
+
+
+      - name: Terraform Apply
+        run: |
+          cd ops/yc-deploy
+          terraform apply -auto-approve \
+            -var folder_id=${{ vars.FOLDER_ID }} \
+            -var orders_version=${{ env.RELEASE_VERSION }} \
+            -var service_account_key_file=/tmp/yc-key.json
+
+      - name: Get Terraform Output
+        id: tf-output
+        run: |
+          cd ops/yc-deploy
+          echo "app_ip=$(terraform output -raw orders-compute-cloud-public-ip)" >> "$GITHUB_OUTPUT"
+
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ConneKt tests
+        uses: Amplicode/connekt-github-action@v1.0.2
+        with:
+          files: |
+            ./src/connekt/test.connekt.kts
+          env_file: ./src/connekt/connekt.env.json
+          env: ci
+          env_params: |
+            host=http://${{ needs.terraform.outputs.app_ip }}:8080
