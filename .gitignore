@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+ops/yc-deploy/.terraform
+
+ops/orders/charts
