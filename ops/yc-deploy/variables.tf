@@ -6,3 +6,7 @@ variable "folder_id" {
 variable "orders_version" {
     type = string
 }
+
+variable "service_account_key_file" {
+    type = string
+}

@@ -21,7 +21,10 @@ terraform {
     }
 }
 
-provider "yandex" { folder_id = var.folder_id }
+provider "yandex" {
+    folder_id = var.folder_id
+    service_account_key_file = var.service_account_key_file
+}
 
 data "yandex_vpc_network" "default" {
     name = "default"

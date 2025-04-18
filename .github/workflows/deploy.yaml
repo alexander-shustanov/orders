@@ -20,6 +20,9 @@ jobs:
         with:
           terraform_version: 1.7.5
 
+      - name: Write YC Service Account Key
+        run: echo "${{ secrets.KEY_JSON }}" > /tmp/yc-key.json
+
       - name: Extract release name from branch
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/heads/yc_deploy/}" >> $GITHUB_ENV
@@ -43,14 +46,17 @@ jobs:
           cd ops/yc-deploy
           terraform plan \
             -var folder_id=${{ vars.FOLDER_ID }} \
-            -var orders_version=${{ env.RELEASE_VERSION }}
+            -var orders_version=${{ env.RELEASE_VERSION }} \
+            -var service_account_key_file=/tmp/yc-key.json
+
 
       - name: Terraform Apply
         run: |
           cd ops/yc-deploy
           terraform apply -auto-approve \
             -var folder_id=${{ vars.FOLDER_ID }} \
-            -var orders_version=${{ env.RELEASE_VERSION }}
+            -var orders_version=${{ env.RELEASE_VERSION }} \
+            -var service_account_key_file=/tmp/yc-key.json
 
       - name: Get Terraform Output
         id: tf-output
