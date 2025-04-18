@@ -26,6 +26,7 @@ jobs:
 
       - name: Terraform Init
         run: |
+          cd ops/yc-deploy
           terraform init \
             -backend-config="access_key=${{ secrets.YC_ACCESS_KEY }}" \
             -backend-config="secret_key=${{ secrets.YC_SECRET_KEY }}" \
@@ -34,17 +35,19 @@ jobs:
 
       - name: Terraform Validate
         run: |
+          cd ops/yc-deploy
           terraform validate
-
 
       - name: Terraform Plan
         run: |
+          cd ops/yc-deploy
           terraform plan \
             -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }}
 
       - name: Terraform Apply
         run: |
+          cd ops/yc-deploy
           terraform apply -auto-approve \
             -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }}
@@ -52,6 +55,7 @@ jobs:
       - name: Get Terraform Output
         id: tf-output
         run: |
+          cd ops/yc-deploy
           echo "APP_IP=$(terraform output -raw orders-compute-cloud-public-ip)" >> $GITHUB_ENV
 
 
