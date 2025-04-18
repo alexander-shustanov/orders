@@ -145,7 +145,7 @@ useCase("Create Order") {
     }
 
     for (product in products) {
-        POST("http://localhost:8080/orders/{orderId}/lines") {
+        POST("$host/orders/{orderId}/lines") {
             pathParam("orderId", orderId)
 
             contentType("application/json")
@@ -161,7 +161,7 @@ useCase("Create Order") {
         }
     }
 
-    POST("http://localhost:8080/orders/{orderId}/pay") {
+    POST("$host/orders/{orderId}/pay") {
         pathParam("orderId", orderId)
     }
 }
