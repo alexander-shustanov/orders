@@ -39,7 +39,7 @@ jobs:
       - name: Terraform Destroy
         run: |
           cd $DEPLOY_DIR
-          terraform destroy \
+          terraform destroy -auto-approve \
             -var folder_id=${{ vars.FOLDER_ID }} \
             -var orders_version=${{ env.RELEASE_VERSION }} \
             -var service_account_key_file=/tmp/yc-key.json
