@@ -54,7 +54,7 @@ public class InventoryService {
     @Transactional(propagation = Propagation.REQUIRED)
     public void reserve(Product product, City city, Long amount) {
         Inventory inventory = inventoryRepository.findByProductAndCity(product, city)
-            .filter(t -> amount < t.getAvailable()) // demo: change sign
+            .filter(t -> amount < t.getAvailable())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Unable to reserve product"));
 
         inventory.setAvailable(inventory.getAvailable() - amount);

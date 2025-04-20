@@ -6,12 +6,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.springio.orders.domain.Order;
 import ru.springio.orders.rest.dto.*;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.springio.orders.rest.filter.OrderFilter;
+import ru.springio.orders.rest.mapper.OrderLineMapper;
+import ru.springio.orders.rest.mapper.OrderMapper;
 import ru.springio.orders.service.OrderService;
 
 
@@ -22,14 +25,21 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    private final OrderLineMapper orderLineMapper;
+
+    private final OrderMapper orderMapper;
+
     @PostMapping
     public OrderDto create(@RequestBody CreateOrderDto orderDto) {
-        return orderService.create(orderDto);
+        Order toCreate = orderMapper.toEntity(orderDto);
+        Order created = orderService.create(toCreate);
+        return orderMapper.toOrderDto(created);
     }
 
     @GetMapping("/active")
     public ResponseEntity<OrderWithLinesDto> getActiveOrder(@RequestParam Long customerId) {
         return orderService.getActiveOrder(customerId)
+            .map(orderMapper::toOrderWithLinesDto)
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.noContent().build());
     }
@@ -42,12 +52,20 @@ public class OrderController {
 
     @PostMapping("/{orderId}/lines")
     public OrderLineDto addProduct(@PathVariable Long orderId, @RequestBody ProductAndAmount productAndAmount) {
-        return orderService.addProduct(orderId, productAndAmount.productId(), productAndAmount.amount());
+        return orderLineMapper.toOrderLineDto(
+            orderService.addProduct(
+                orderId,
+                productAndAmount.productId(),
+                productAndAmount.amount()
+            )
+        );
     }
 
     @PostMapping("/{orderId}/lines/{orderLineId}")
     public OrderLineDto changeProductsAmount(@PathVariable Long orderLineId, @RequestBody OrderLineAmount amount) {
-        return orderService.changeProductsAmount(orderLineId, amount);
+        return orderLineMapper.toOrderLineDto(
+            orderService.changeProductsAmount(orderLineId, amount.getAmount())
+        );
     }
 
     @DeleteMapping("/{orderId}/lines/{orderLineId}")
@@ -57,10 +75,12 @@ public class OrderController {
 
     @PostMapping("/{orderId}/pay")
     public OrderDto payOrder(@PathVariable Long orderId) {
-        return orderService.payOrder(orderId);
+        return orderMapper.toOrderDto(
+            orderService.payOrder(orderId)
+        );
     }
 
-    @RequestMapping(value = "/{orderId}", method=RequestMethod.DELETE)
+    @DeleteMapping("/{orderId}")
     public void deleteOrder(@PathVariable Long orderId) {
         orderService.cancelOrder(orderId);
     }

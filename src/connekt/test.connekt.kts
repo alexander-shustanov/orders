@@ -129,6 +129,7 @@ useCase("Do supply") {
 }
 
 useCase("Create Order") {
+    // create order
     val orderId by POST("$host/orders") {
         contentType("application/json")
 
@@ -144,23 +145,60 @@ useCase("Create Order") {
         jsonPath().readLong("$.id")
     }
 
-    for (product in products) {
-        POST("$host/orders/{orderId}/lines") {
-            pathParam("orderId", orderId)
+    // add product
+    val orderLineId by POST("$host/orders/{orderId}/lines") {
+        pathParam("orderId", orderId)
 
-            contentType("application/json")
+        contentType("application/json")
 
-            body(
-                """
+        body(
+            """
                 {
-                    "productId": ${product},
+                    "productId": ${products.first()},
                     "amount": 1
-                }"""
-            )
-
-        }
+            }""".trimIndent()
+        )
+    } then {
+        jsonPath().readLong("$.id")
     }
 
+    // add huge amount of items
+    POST("$host/orders/{orderId}/lines/{orderLineId}") {
+        pathParam("orderId", orderId)
+        pathParam("orderLineId", orderLineId)
+
+        contentType("application/json")
+
+        body(
+            """
+            {
+              "amount": 50000
+            }
+            """.trimIndent()
+        )
+    } then {
+        assertThat(code).isEqualTo(409)
+    }
+
+    // add adequate amount
+    POST("$host/orders/{orderId}/lines/{orderLineId}") {
+        pathParam("orderId", orderId)
+        pathParam("orderLineId", orderLineId)
+
+        contentType("application/json")
+
+        body(
+            """
+            {
+              "amount": 5
+            }
+            """.trimIndent()
+        )
+    } then {
+        assertThat(code).isEqualTo(200)
+    }
+
+    // pay order
     POST("$host/orders/{orderId}/pay") {
         pathParam("orderId", orderId)
     }

@@ -18,6 +18,7 @@ public class OrderWithLinesDto {
     BigDecimal sum;
     CityDto city;
     Instant createdDate;
+    Long customerId;
 
     /**
      * DTO for {@link ru.springio.orders.domain.OrderLine}

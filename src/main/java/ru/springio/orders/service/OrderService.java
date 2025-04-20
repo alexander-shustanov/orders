@@ -5,8 +5,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,15 +37,15 @@ public class OrderService {
 
     private final OrderLineRepository orderLineRepository;
 
-    private final OrderLineMapper orderLineMapper;
-
 //    private final KafkaTemplate<String, OrderDto> kafkaTemplate;
 
     private final InventoryService inventoryService;
 
-    public OrderDto create(CreateOrderDto orderDto) {
+    private final OrderNotifyService orderNotifyService;
+
+    public Order create(Order order) {
         Optional<Order> existing = orderRepository.findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(
-            customerRepository.getReferenceById(orderDto.customerId()),
+            customerRepository.getReferenceById(order.getCustomer().getId()),
             OrderStatus.NEW
         );
 
@@ -55,19 +53,17 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        return orderMapper.toOrderDto(
-            orderRepository.save(orderMapper.toEntity(orderDto)));
+        return orderRepository.save(order);
     }
 
-    public Optional<OrderWithLinesDto> getActiveOrder(Long customerId) {
+    public Optional<Order> getActiveOrder(Long customerId) {
         Customer customer = customerRepository.getReferenceById(customerId);
 
-        return orderRepository.findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(customer, OrderStatus.NEW)
-            .map(orderMapper::toOrderWithLinesDto);
+        return orderRepository.findFirstByCustomerAndOrderStatus_OrderByCreatedDateDesc(customer, OrderStatus.NEW);
     }
 
-    public OrderLineDto addProduct(Long orderId, Long productId, Long amount) {
-        Order order = getOrderOrThrow(orderId);
+    public OrderLine addProduct(Long orderId, Long productId, Long amount) {
+        Order order = orderRepository.getWithOrderLines(orderId);
 
         if (order.getOrderStatus() != OrderStatus.NEW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Order lines is readonly");
@@ -75,7 +71,6 @@ public class OrderService {
 
         Product product = productRepository.getReferenceById(productId);
 
-        // todo update inventory
         inventoryService.reserve(product, order.getCity(), amount);
 
         OrderLine orderLine = order.getOrderLines().stream()
@@ -97,10 +92,11 @@ public class OrderService {
 
         orderRepository.saveAndFlush(order);
 
-        return orderLineMapper.toOrderLineDto(orderLine);
+        return orderLine;
     }
 
-    public OrderLineDto changeProductsAmount(Long orderLineId, OrderLineAmount amount) {
+    @Transactional
+    public OrderLine changeProductsAmount(Long orderLineId, Long amount) {
         OrderLine orderLine = orderLineRepository.findById(orderLineId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
@@ -109,7 +105,15 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        orderLine.setAmount(amount.getAmount());
+        Product product = productRepository.getReferenceById(orderLine.getProduct().getId());
+
+        if (amount > orderLine.getAmount()) {
+            inventoryService.reserve(product, order.getCity(), amount - orderLine.getAmount());
+        } else {
+            inventoryService.cancelReserve(product, order.getCity(), orderLine.getAmount() - amount);
+        }
+
+        orderLine.setAmount(amount);
 
         orderLineRepository.saveAndFlush(orderLine);
 
@@ -118,14 +122,18 @@ public class OrderService {
 
         orderRepository.save(order);
 
-        return orderLineMapper.toOrderLineDto(orderLine);
+        return orderLine;
     }
 
     @Transactional
     public void deleteProduct(Long orderLineId) {
         orderLineRepository.findById(orderLineId)
             .ifPresent(line -> {
-                inventoryService.cancelReserve(line.getProduct(), null, line.getAmount());
+                inventoryService.cancelReserve(
+                    line.getProduct(),
+                    line.getOrder().getCity(),
+                    line.getAmount()
+                );
 
                 recalculateOrderSum(line.getOrder());
             });
@@ -134,7 +142,7 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderDto payOrder(Long orderId) {
+    public Order payOrder(Long orderId) {
         Order order = getOrderOrThrow(orderId);
         if (order.getOrderStatus() != OrderStatus.NEW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
@@ -142,11 +150,11 @@ public class OrderService {
 
         order.setOrderStatus(OrderStatus.PAID);
 
-        OrderDto orderDto = orderMapper.toOrderDto(order);
+        orderNotifyService.orderPayed(order);
 
 //        kafkaTemplate.send("order-pay", orderDto);
 
-        return orderDto;
+        return order;
     }
 
     @Transactional
@@ -156,14 +164,20 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT);
         }
 
-        order.getOrderLines().forEach(line -> {
-            inventoryService.cancelReserve(line.getProduct(), order.getCity(), line.getAmount());
-        });
+        order
+            .getOrderLines()
+            .forEach(line -> {
+                inventoryService.cancelReserve(
+                    line.getProduct(),
+                    order.getCity(),
+                    line.getAmount()
+                );
+            });
 
         order.setOrderStatus(OrderStatus.CANCELED);
     }
 
-//    @KafkaListener(topics = "orderDelivery", containerFactory = "orderDeliveryInfoDtoListenerFactory")
+    //    @KafkaListener(topics = "orderDelivery", containerFactory = "orderDeliveryInfoDtoListenerFactory")
 //    @Transactional
     public void consumeOrderDeliveryInfoDto(OrderDeliveryInfoDto orderDeliveryInfoDto) {
         Order order = getOrderOrThrow(orderDeliveryInfoDto.id());

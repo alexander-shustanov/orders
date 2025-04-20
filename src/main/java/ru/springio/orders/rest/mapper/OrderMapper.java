@@ -17,6 +17,7 @@ public interface OrderMapper {
     @Mapping(source = "cityId", target = "city.id")
     Order toEntity(CreateOrderDto createOrderDto);
 
+    @Mapping(source = "customerId", target = "customer.id")
     Order toEntity(OrderWithLinesDto orderWithLinesDto);
 
     @AfterMapping
